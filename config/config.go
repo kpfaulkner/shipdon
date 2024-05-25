@@ -2,7 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -25,7 +27,15 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
-	data, err := os.ReadFile("config.json")
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fullPath := filepath.Join(homeDir, ".shipdon", "config.json")
+
+	data, err := os.ReadFile(fullPath)
 	if err != nil {
 
 		// make a dummy...
@@ -57,7 +67,13 @@ func (c *Config) Save() error {
 		return err
 	}
 
-	err = os.WriteFile("config.json", data, 0644)
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fullPath := filepath.Join(homeDir, ".shipdon", "config.json")
+
+	err = os.WriteFile(fullPath, data, 0644)
 	if err != nil {
 		return err
 	}
