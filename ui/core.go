@@ -493,7 +493,7 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 			if ok {
 				log.Debugf("boost for toot %+v\n", t.status.ID)
 				rebloggedStatus := t.status.Reblogged.(bool)
-				t.backend.Boost(t.status.ID, !rebloggedStatus) // FIXME(kpfaulkner) how to tell if I've reblogged it?
+				t.backend.Boost(t.status.ID, !rebloggedStatus)
 			}
 
 			_, ok = t.ReplyButton.Update(gtx)
@@ -509,7 +509,7 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 
 				favStatus := t.status.Favourited.(bool)
 				// wont display change until refresh happens...
-				t.backend.SetFavourite(t.status.ID, !favStatus) // FIXME(kpfaulkner) how to tell if I've favourited?
+				t.backend.SetFavourite(t.status.ID, !favStatus)
 			}
 
 			_, ok = t.ViewThreadButton.Update(gtx)
