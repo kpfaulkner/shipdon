@@ -458,24 +458,31 @@ func (c *MastodonBackend) GenerateOAuthLoginURL(instanceURL string) (string, err
 // generateConfigWithCode generates the config for Shipdon.
 func (c *MastodonBackend) GenerateConfigWithCode(code string) error {
 
-	config := &mastodon.Config{
-		Server:       "https://hachyderm.io",
+	cfg := &mastodon.Config{
+		Server:       c.config.InstanceURL,
 		ClientID:     c.config.ClientID,
 		ClientSecret: c.config.ClientSecret,
 		AccessToken:  code,
 	}
 
-	client := mastodon.NewClient(config)
-
-	acct, err := client.GetAccountCurrentUser(context.Background())
+	c.client = mastodon.NewClient(cfg)
+	err := c.client.AuthenticateToken(context.Background(), code, "urn:ietf:wg:oauth:2.0:oob")
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("Account is %v\n", acct)
 
 	// save to disk.
-	c.config.Token = code
+	c.config.Token = cfg.AccessToken
 	c.writeConfigToFile()
+
+	c.ctx = context.Background()
+
+	acct, err := c.client.GetAccountCurrentUser(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("Account is %v\n", acct)
 
 	return nil
 }
