@@ -15,6 +15,7 @@ import (
 
 var (
 	AccountID int64
+	Version   = "0.1.0"
 )
 
 func setupLogging() {
@@ -40,7 +41,7 @@ func main() {
 	opts := []app.Option{}
 
 	opts = append(opts, app.Size(unit.Dp(800), unit.Dp(800)))
-	opts = append(opts, app.Title("Shipdon"))
+	opts = append(opts, app.Title("Shipdon : "+Version))
 	w.Option(opts...)
 
 	windowCtx, cancel := context.WithCancel(appCtx)
@@ -72,7 +73,6 @@ func main() {
 		config,
 	)
 
-	//ui.Renderer.Config.MonospaceFont.Typeface = "Go Mono"
 	go func() {
 		if err := uinterface.Run(); err != nil {
 			log.Fatal(err)
