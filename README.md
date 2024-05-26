@@ -11,7 +11,7 @@ Pre-built binaries will soon be available at https://github.com/kpfaulkner/shipd
 
 Go 1.21 is required to build Shipdon.
 
-Instructions for building: go build .
+To build simple run the make command. Or if make is not installed then: go build .
 
 This will generate a single binary called `shipdon` in the current directory.
 
