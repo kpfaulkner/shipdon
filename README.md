@@ -19,6 +19,8 @@ Upon first run, Shipdon will request authentication (via OAuth) to your preferre
 Mastodon instance and will create a configuration file in the 
 user's home directory called ~/.shipdon/config.yaml
 
+## Screenshots
+![Screenshot](docs/shipdon.png)
 
 ### Notes:
  Some icons are from https://iconscout.com/free-icon-pack/google-material-vol-1
