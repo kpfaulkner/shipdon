@@ -323,7 +323,7 @@ func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richt
 					// search for mentions in status
 					for _, mention := range mentions {
 						if mention.Username == path.Base(linkText)[1:] {
-							span.Set("userID", fmt.Sprintf("%d", mention.ID))
+							span.Set("userID", mention.ID)
 						}
 					}
 				}
@@ -384,7 +384,7 @@ func (ss *StatusState) generateNameSpanStyles(status mastodon.Status) []richtext
 			Interactive: true,
 		}
 		span.Set("username", status.Account.Username)
-		span.Set("userID", fmt.Sprintf("%d", status.Account.ID))
+		span.Set("userID", status.Account.ID)
 		spans = append(spans, span)
 	} else {
 		if status.Reblog != nil {
@@ -396,7 +396,7 @@ func (ss *StatusState) generateNameSpanStyles(status mastodon.Status) []richtext
 				Interactive: true,
 			}
 			span.Set("username", status.Account.Username)
-			span.Set("userID", fmt.Sprintf("%d", status.Account.ID))
+			span.Set("userID", status.Account.ID)
 			spans = append(spans, span)
 
 			span2 := richtext.SpanStyle{

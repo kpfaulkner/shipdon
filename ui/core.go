@@ -466,9 +466,9 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 					}
 
 					if username, ok := o.Get("username").(string); ok && username != "" {
-						if userID, ok := o.Get("userID").(string); ok && userID != "" {
+						if userID, ok := o.Get("userID").(mastodon.ID); ok && userID != "" {
 							log.Debugf("username clicked %s : %s\n", username, userID)
-							u.addNewUsernameColumn(username, userID)
+							u.addNewUsernameColumn(username, string(userID))
 						}
 					}
 
@@ -481,9 +481,9 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 				case richtext.Click:
 
 					if username, ok := o.Get("username").(string); ok && username != "" {
-						if userID, ok := o.Get("userID").(string); ok && userID != "" {
+						if userID, ok := o.Get("userID").(mastodon.ID); ok && userID != "" {
 							log.Debugf("username clicked %s : %s\n", username, userID)
-							u.addNewUsernameColumn(username, userID)
+							u.addNewUsernameColumn(username, string(userID))
 						}
 					}
 				}
