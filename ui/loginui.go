@@ -63,7 +63,7 @@ func openLoginWindow() string {
 						return layout.Spacer{Height: unit.Dp(10)}.Layout(gtx)
 					}),
 					layout.Rigid(func(gtx C) D {
-						return material.Button(th, &notifyBtn, "notify").Layout(gtx)
+						return material.Button(th, &notifyBtn, "submit").Layout(gtx)
 					}),
 					layout.Rigid(func(gtx C) D {
 						return layout.Spacer{Height: unit.Dp(10)}.Layout(gtx)
