@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"gioui.org/widget"
 	log "github.com/sirupsen/logrus"
 	"image"
@@ -62,12 +61,10 @@ func (c *ImageCache) FlushOldEntries() {
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	fmt.Printf("ImageCache had %d entries.\n", len(c.cache))
 	for k, v := range c.cache {
 		if time.Since(v.lastUsed) > 10*time.Minute {
 			log.Debugf("Deleting from imagecache %s\n", k)
 			delete(c.cache, k)
 		}
 	}
-	fmt.Printf("ImageCache now has %d entries.\n", len(c.cache))
 }

@@ -17,12 +17,22 @@ var (
 	AccountID int64
 )
 
+func setupLogging() {
+	log.SetFormatter(&log.JSONFormatter{})
+
+	file, err := os.OpenFile("shipdon.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	if err == nil {
+		log.SetOutput(file)
+	} else {
+		log.SetOutput(os.Stdout)
+		log.Info("Failed to log to file, using default stderr")
+	}
+
+	log.SetLevel(log.ErrorLevel)
+}
 func main() {
 
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetOutput(os.Stdout)
-	log.SetLevel(log.DebugLevel)
-
+	setupLogging()
 	config := config2.LoadConfig()
 	appCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
