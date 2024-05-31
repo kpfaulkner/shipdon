@@ -176,7 +176,7 @@ func (u *UI) Run() error {
 				// put random delays in so we're not hammering the server all at once.
 				go func(col *MessageColumn) {
 					time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
-					events.FireEvent(events.NewRefreshEvent(col.timelineID, false, getRefreshTypeForColumnType(col.columnType)))
+					events.FireEvent(events.NewRefreshEvent(col.timelineID, true, getRefreshTypeForColumnType(col.columnType)))
 				}(col)
 				//events.FireEvent(events.NewRefreshEvent(col.timelineID, false, getRefreshTypeForColumnType(col.columnType)))
 			}

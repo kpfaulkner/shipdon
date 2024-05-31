@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"gioui.org/app"
 	"gioui.org/unit"
 	"git.sr.ht/~gioverse/skel/stream"
@@ -11,14 +13,16 @@ import (
 	"github.com/kpfaulkner/shipdon/ui"
 	log "github.com/sirupsen/logrus"
 	"os"
+	"runtime"
+	"time"
 )
 
 var (
 	AccountID int64
-	Version   = "0.1.1"
+	Version   = "0.1.2"
 )
 
-func setupLogging() {
+func setupLogging(debug bool) {
 	log.SetFormatter(&log.JSONFormatter{})
 
 	file, err := os.OpenFile("shipdon.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -28,17 +32,52 @@ func setupLogging() {
 		log.SetOutput(os.Stdout)
 		log.Info("Failed to log to file, using default stderr")
 	}
+	log.SetFormatter(&log.TextFormatter{TimestampFormat: "2006-01-02 15:04:05", FullTimestamp: true})
 
-	log.SetLevel(log.ErrorLevel)
+	if debug {
+		log.SetLevel(log.DebugLevel)
+	} else {
+		log.SetLevel(log.InfoLevel)
+	}
 }
+
+func PrintMemUsage() {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tNumGC = %v", m.NumGC)
+	fmt.Printf("\tHeapObjects = %v", m.HeapObjects)
+	fmt.Printf("\tHeapReleased = %v\n", m.HeapReleased)
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
 func main() {
 
-	setupLogging()
+	//defer profile.Start(profile.MemProfile, profile.MemProfileRate(100), profile.ProfilePath(".")).Stop()
+
+	debug := flag.Bool("debug", false, "enable debug mode")
+	flag.Parse()
+
+	setupLogging(*debug)
 	config := config2.LoadConfig()
 	appCtx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	w := new(app.Window)
 	opts := []app.Option{}
+
+	go func() {
+		for {
+			//debug.FreeOSMemory()
+			PrintMemUsage()
+			time.Sleep(30 * time.Second)
+		}
+	}()
 
 	opts = append(opts, app.Size(unit.Dp(800), unit.Dp(800)))
 	opts = append(opts, app.Title("Shipdon : "+Version))
@@ -64,10 +103,7 @@ func main() {
 		controller,
 		w,
 		ui.NewComposeColumn(ui.NewComponentState(controller, backend), th),
-		[]*ui.MessageColumn{
-			ui.NewMessageColumn(ui.NewComponentState(controller, backend), "home", "home", ui.HomeColumn, th),
-			ui.NewMessageColumn(ui.NewComponentState(controller, backend), "notifications", "notifications", ui.NotificationsColumn, th),
-		},
+		[]*ui.MessageColumn{},
 		backend,
 		eventListener,
 		config,

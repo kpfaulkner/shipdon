@@ -271,9 +271,12 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 	// prune cache entries not used.
 	for k, v := range p.statusStateCache {
 		if time.Since(v.lastUsed) > 10*time.Minute {
+			log.Infof("deleting statusStateCache entry %s", k)
 			delete(p.statusStateCache, k)
 		}
 	}
+
+	log.Debugf("statusStateList: %d", len(p.statusStateList))
 
 	paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
 	listStyle := material.List(&p.th.Theme, &p.statusList)

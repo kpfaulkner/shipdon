@@ -584,11 +584,7 @@ func (i StatusStyle) layoutStatus(gtx C) D {
 					layout.Rigid(func(gtx C) D {
 						ic, _ := widget.NewIcon(icons.ContentReply)
 						replyButton := newIconButton(i.state.th, &i.state.ReplyButton, ic, i.state.th.IconBackgroundColour)
-						//if i.state.status. {
-						//	replyButton.iconColour = i.state.th.IconActiveColour
-						//} else {
 						replyButton.iconColour = i.state.th.IconInactiveColour
-						//
 
 						return replyButton.Layout(gtx)
 
