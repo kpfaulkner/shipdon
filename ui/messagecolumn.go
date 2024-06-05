@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"gioui.org/font/gofont"
 	"gioui.org/unit"
 	"github.com/kpfaulkner/shipdon/events"
@@ -121,7 +122,18 @@ func NewMessageColumn(componentState ComponentState, timelineName string, timeli
 	p.icon = ic
 	p.columnType = columnType
 
+	go func() {
+		for {
+			p.PrintStats()
+			time.Sleep(5 * time.Minute)
+		}
+	}()
+
 	return p
+}
+
+func (p *MessageColumn) PrintStats() {
+	fmt.Printf("MessageColumn %s: statusCache size %d\n", p.timelineName, len(p.statusStateCache))
 }
 
 // Layout builds your UI within the operation list in gtx.
@@ -284,10 +296,8 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 
 	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
 
-		// if we're at the end of the list, then get older.
-		// except if the list is less than 40...  then we're seeing all there is.
-		// FIXME(kpfaulkner) strengthen logic here.
-		if (len(p.statusStateList)-20 < index) && len(p.statusStateList) > 30 {
+		// if we're trying to display within 20 of the last element, then fetch older
+		if index > len(p.statusStateList)-20 {
 			log.Debugf("retrieve older status updates")
 			// cause messages to get refreshed...
 			events.FireEvent(events.NewGetOlderRefreshEvents(p.timelineID, getRefreshTypeForColumnType(p.columnType)))

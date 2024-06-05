@@ -22,7 +22,7 @@ const (
 	AppWebsite = "https://github.com/kpfaulkner/shipdon"
 
 	// get 20 messages at a time.
-	MastodonLimit   = 40
+	MastodonLimit   = 20
 	MastodonSleepMS = 100
 )
 
@@ -272,125 +272,123 @@ func (c *MastodonBackend) GetLists() ([]*mastodon.List, error) {
 func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 	re := e.(events.RefreshEvent)
 
-	timeLineIDs := []string{re.TimelineID}
+	timelineID := re.TimelineID
 
-	for _, timelineID := range timeLineIDs {
-		var statuses []*mastodon.Status
-		var err error
+	var statuses []*mastodon.Status
+	var err error
 
-		var details TimelineDetails
+	var details TimelineDetails
 
-		if t, ok := c.lastRefreshed[timelineID]; ok {
+	if t, ok := c.lastRefreshed[timelineID]; ok {
 
-			//if refreshed in last 10 seconds... ignore it.
-			if time.Now().Before(t.Add(time.Second * 10)) {
-				log.Debugf("discarding refresh event for %s due to already underway", timelineID)
-				return nil
-			}
+		//if refreshed in last 10 seconds... ignore it.
+		if time.Now().Before(t.Add(time.Second * 10)) {
+			log.Debugf("discarding refresh event for %s due to already underway", timelineID)
+			return nil
 		}
+	}
 
-		c.lastRefreshed[timelineID] = time.Now()
+	c.lastRefreshed[timelineID] = time.Now()
 
-		details, _ = c.timelineMessageCache.GetTimelineDetails(timelineID)
+	details, _ = c.timelineMessageCache.GetTimelineDetails(timelineID)
 
-		params := mastodon.Pagination{Limit: MastodonLimit}
+	params := mastodon.Pagination{Limit: MastodonLimit}
 
-		// if we're getting older statuses, then we need to get the statuses before the oldest one we have.
-		if len(details.messages) > 0 && re.GetOlder {
-			params.MaxID = details.messages[len(details.messages)-1]
-		} else {
-			// regular get newer then prepend to existing statuses
-			if !re.ClearExisting && len(details.messages) > 0 {
-				params.SinceID = details.messages[0]
-			}
+	// if we're getting older statuses, then we need to get the statuses before the oldest one we have.
+	if len(details.messages) > 0 && re.GetOlder {
+		params.MaxID = details.messages[len(details.messages)-1]
+	} else {
+		// regular get newer then prepend to existing statuses
+		if !re.ClearExisting && len(details.messages) > 0 {
+			params.SinceID = details.messages[0]
 		}
+	}
 
-		// when added to cache, should it be sorted.
-		shouldSort := true
+	// when added to cache, should it be sorted.
+	shouldSort := true
 
-		switch re.RefreshType {
-		case events.HASHTAG_REFRESH:
-			statuses, err = c.client.GetTimelineHashtag(context.Background(), timelineID, false, &params)
-			if err != nil {
-				log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
-				continue
-			}
-		case events.LIST_REFRESH:
-			statuses, err = c.client.GetTimelineList(context.Background(), mastodon.ID(timelineID), &params)
-			if err != nil {
-				log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
-				continue
-			}
-		case events.HOME_REFRESH:
-			statuses, err = c.client.GetTimelineHome(context.Background(), &params)
-			if err != nil {
-				log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
-				continue
-			}
-		case events.NOTIFICATION_REFRESH:
-			notifications, err := c.client.GetNotifications(context.Background(), &params)
-			if err != nil {
-				log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
-				continue
-			}
-
-			// TODO(kpfaulkner) do we want the additional information in a notification?
-			for _, n := range notifications {
-				if n.Status != nil {
-
-					//// disable for moment. Do I rework cache to handle something other than Status?
-					//if false {
-					//	// if any statuses are favourited, then find who favourited them
-					//	if n.Status.Account.ID == currentAccount.ID && n.Status.FavouritesCount > 0 {
-					//		accounts, err := c.client.GetStatusFavouritedBy(n.Status.ID, &madon.LimitParams{
-					//			Limit: 2,
-					//		})
-					//		if err != nil {
-					//			log.Errorf("unable to get favourites for statusID %d : err %s", n.Status.ID, err)
-					//			continue
-					//		}
-					//		log.Debugf("accounts favouriting %d : %v", n.Status.ID, accounts)
-					//	}
-					//	if len(n.Status.Mentions) > 0 {
-					//		log.Debugf("mentions %+v", n.Status.Mentions)
-					//	}
-					//}
-					statuses = append(statuses, n.Status)
-				}
-			}
-		case events.USER_REFRESH:
-			statuses, err = c.client.GetAccountStatuses(context.Background(), mastodon.ID(re.TimelineID), &params)
-
-		case events.THREAD_REFRESH:
-			done := false
-			statusID := mastodon.ID(re.TimelineID)
-			for !done {
-				status, err := c.client.GetStatus(context.Background(), statusID)
-				if err != nil {
-					log.Errorf("unable to get statusID %s : err %s", timelineID, err)
-					continue
-				}
-				statuses = append(statuses, status)
-				if status.InReplyToID != nil {
-					s := status.InReplyToID.(string)
-					statusID = mastodon.ID(s)
-				} else {
-					done = true
-				}
-			}
-			slices.Reverse(statuses)
-			shouldSort = false
-		}
-
-		var nonPtrStatus []mastodon.Status
-		for _, s := range statuses {
-			nonPtrStatus = append(nonPtrStatus, *s)
-		}
-		err = c.timelineMessageCache.AddToTimeline(timelineID, re.ClearExisting, nonPtrStatus, shouldSort)
+	switch re.RefreshType {
+	case events.HASHTAG_REFRESH:
+		statuses, err = c.client.GetTimelineHashtag(context.Background(), timelineID, false, &params)
 		if err != nil {
-			log.Errorf("unable to add statuses to timelineID %s : err %s", timelineID, err)
-			return err
+			log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
+			return nil
 		}
+	case events.LIST_REFRESH:
+		statuses, err = c.client.GetTimelineList(context.Background(), mastodon.ID(timelineID), &params)
+		if err != nil {
+			log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
+			return nil
+		}
+	case events.HOME_REFRESH:
+		statuses, err = c.client.GetTimelineHome(context.Background(), &params)
+		if err != nil {
+			log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
+			return nil
+		}
+	case events.NOTIFICATION_REFRESH:
+		notifications, err := c.client.GetNotifications(context.Background(), &params)
+		if err != nil {
+			log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
+			return nil
+		}
+
+		// TODO(kpfaulkner) do we want the additional information in a notification?
+		for _, n := range notifications {
+			if n.Status != nil {
+
+				//// disable for moment. Do I rework cache to handle something other than Status?
+				//if false {
+				//	// if any statuses are favourited, then find who favourited them
+				//	if n.Status.Account.ID == currentAccount.ID && n.Status.FavouritesCount > 0 {
+				//		accounts, err := c.client.GetStatusFavouritedBy(n.Status.ID, &madon.LimitParams{
+				//			Limit: 2,
+				//		})
+				//		if err != nil {
+				//			log.Errorf("unable to get favourites for statusID %d : err %s", n.Status.ID, err)
+				//			continue
+				//		}
+				//		log.Debugf("accounts favouriting %d : %v", n.Status.ID, accounts)
+				//	}
+				//	if len(n.Status.Mentions) > 0 {
+				//		log.Debugf("mentions %+v", n.Status.Mentions)
+				//	}
+				//}
+				statuses = append(statuses, n.Status)
+			}
+		}
+	case events.USER_REFRESH:
+		statuses, err = c.client.GetAccountStatuses(context.Background(), mastodon.ID(re.TimelineID), &params)
+
+	case events.THREAD_REFRESH:
+		done := false
+		statusID := mastodon.ID(re.TimelineID)
+		for !done {
+			status, err := c.client.GetStatus(context.Background(), statusID)
+			if err != nil {
+				log.Errorf("unable to get statusID %s : err %s", timelineID, err)
+				continue
+			}
+			statuses = append(statuses, status)
+			if status.InReplyToID != nil {
+				s := status.InReplyToID.(string)
+				statusID = mastodon.ID(s)
+			} else {
+				done = true
+			}
+		}
+		slices.Reverse(statuses)
+		shouldSort = false
+	}
+
+	var nonPtrStatus []mastodon.Status
+	for _, s := range statuses {
+		nonPtrStatus = append(nonPtrStatus, *s)
+	}
+	err = c.timelineMessageCache.AddToTimeline(timelineID, re.ClearExisting, nonPtrStatus, shouldSort)
+	if err != nil {
+		log.Errorf("unable to add statuses to timelineID %s : err %s", timelineID, err)
+		return err
 	}
 
 	return nil

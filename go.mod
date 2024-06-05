@@ -3,17 +3,16 @@ module github.com/kpfaulkner/shipdon
 go 1.21.0
 
 require (
-	gioui.org v0.5.1-0.20240306204944-993ec907be4b
+	gioui.org v0.6.0
 	gioui.org/x v0.5.0
 	git.sr.ht/~gioverse/skel v0.0.0-20231031174925-5b7b311c1cf3
 	github.com/inkeliz/giohyperlink v0.0.0-20220903215451-2ac5d54abdce
 	github.com/k3a/html2text v1.2.1
 	github.com/mattn/go-mastodon v0.0.8
 	github.com/pkg/errors v0.9.1
-	github.com/pkg/profile v1.7.0
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/exp/shiny v0.0.0-20220827204233-334a2380cb91
-	golang.org/x/image v0.13.0
+	golang.org/x/image v0.16.0
 	modernc.org/sqlite v1.29.5
 )
 
@@ -22,9 +21,7 @@ require (
 	gioui.org/shader v1.0.8 // indirect
 	git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
-	github.com/felixge/fgprof v0.9.3 // indirect
-	github.com/go-text/typesetting v0.0.0-20230803102845-24e03d8b5372 // indirect
-	github.com/google/pprof v0.0.0-20221118152302-e6195bd50e26 // indirect
+	github.com/go-text/typesetting v0.1.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
@@ -37,6 +34,7 @@ require (
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/tools v0.21.0 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect
 	modernc.org/libc v1.41.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect

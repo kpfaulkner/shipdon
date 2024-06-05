@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fmt"
 	"gioui.org/widget"
 	log "github.com/sirupsen/logrus"
 	"image"
@@ -55,6 +56,11 @@ func (c *ImageCache) Set(key string, entry ImageCacheEntry) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.cache[key] = entry
+}
+
+func (c *ImageCache) PrintStats() {
+
+	fmt.Printf("ImageCache: num entries: %d\n", len(c.cache))
 }
 
 func (c *ImageCache) FlushOldEntries() {
