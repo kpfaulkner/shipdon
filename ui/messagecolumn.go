@@ -87,8 +87,6 @@ type MessageColumn struct {
 	// if now is later than timeStampForRefresh, then refresh via mastodon call.
 	timeStampForRefresh time.Time
 
-	//messages []madon.Status
-
 	// indicate maximum status to display in column
 	maxStatusToDisplay int
 
@@ -97,6 +95,8 @@ type MessageColumn struct {
 	removeColumnButton widget.Clickable
 
 	icon *widget.Icon
+
+	messages []mastodon.Status
 }
 
 // NewMessageColumn builds a messageColumns using a controller and backend.
@@ -125,7 +125,13 @@ func NewMessageColumn(componentState ComponentState, timelineName string, timeli
 	go func() {
 		for {
 			p.PrintStats()
-			time.Sleep(5 * time.Minute)
+			time.Sleep(1 * time.Minute)
+			for k, v := range p.statusStateCache {
+				if time.Since(v.lastUsed) > 2*time.Minute {
+					log.Infof("deleting statusStateCache entry %s", k)
+					delete(p.statusStateCache, k)
+				}
+			}
 		}
 	}()
 
@@ -243,25 +249,45 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 		}
 	}
 
+	p.messages = messages
 	p.statusStateList = []*StatusState{}
 
 	// any that are not in statusStateCache, add them.
-	for _, status := range messages {
+	for _, _ = range p.messages {
+		//newStatusState := NewStatusState(p.ComponentState, p.th)
+		//newStatusState.syncStatusToUI(status, gtx)
+
+		// dummy...
+		newStatusState := &StatusState{}
+		p.statusStateList = append(p.statusStateList, newStatusState)
+	}
+
+	log.Debugf("statusStateList: %d", len(p.statusStateList))
+
+	paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
+	listStyle := material.List(&p.th.Theme, &p.statusList)
+	listStyle.AnchorStrategy = material.Overlay
+
+	// the func will only be called for elements that are visible....  SO... is it worth generating the actual content
+	// once we know they'll be visible? (is that a contradiction?)
+	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
+
+		status := p.messages[index]
+
+		var newStatusState *StatusState
 		if s, ok := p.statusStateCache[status.ID]; !ok {
-			newStatusState := NewStatusState(p.ComponentState, p.th)
+			newStatusState = NewStatusState(p.ComponentState, p.th)
 			newStatusState.syncStatusToUI(status, gtx)
 			p.statusStateCache[status.ID] = StatusStateCacheEntry{
 				statusState: newStatusState,
+				lastUsed:    time.Now(),
 			}
+
 		} else {
-
-			// make sure updates have occured, such as likes, boosts, etc.
-			s.statusState.status = status
+			s.lastUsed = time.Now()
+			p.statusStateCache[status.ID] = s
+			newStatusState = s.statusState
 		}
-
-		s := p.statusStateCache[status.ID]
-		s.lastUsed = time.Now()
-		p.statusStateCache[status.ID] = s
 
 		// update images since they might have been downloaded since last time
 		p.statusStateCache[status.ID].statusState.Avatar = generateAvatar(status)
@@ -277,24 +303,7 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 			p.statusStateCache[status.ID].statusState.imgOrigURL = ""
 		}
 
-		p.statusStateList = append(p.statusStateList, p.statusStateCache[status.ID].statusState)
-	}
-
-	// prune cache entries not used.
-	for k, v := range p.statusStateCache {
-		if time.Since(v.lastUsed) > 10*time.Minute {
-			log.Infof("deleting statusStateCache entry %s", k)
-			delete(p.statusStateCache, k)
-		}
-	}
-
-	log.Debugf("statusStateList: %d", len(p.statusStateList))
-
-	paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
-	listStyle := material.List(&p.th.Theme, &p.statusList)
-	listStyle.AnchorStrategy = material.Overlay
-
-	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
+		p.statusStateList[index] = newStatusState
 
 		// if we're trying to display within 20 of the last element, then fetch older
 		if index > len(p.statusStateList)-20 {
