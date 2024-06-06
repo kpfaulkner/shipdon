@@ -12,8 +12,11 @@ import (
 	"github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/kpfaulkner/shipdon/ui"
 	log "github.com/sirupsen/logrus"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"runtime"
+	"time"
 )
 
 var (
@@ -59,7 +62,25 @@ func bToMb(b uint64) uint64 {
 func main() {
 
 	debug := flag.Bool("debug", false, "enable debug mode")
+	enablePprof := flag.Bool("pprof", false, "enable pprof. listen on port 6060")
+	enableMemStats := flag.Bool("mem", false, "print memory stats on stdout every minute")
 	flag.Parse()
+
+	if *enablePprof {
+		go func() {
+			log.Println(http.ListenAndServe("localhost:6060", nil))
+		}()
+	}
+
+	if *enableMemStats {
+		go func() {
+			for {
+				PrintMemUsage()
+				time.Sleep(1 * time.Minute)
+			}
+		}()
+
+	}
 
 	setupLogging(*debug)
 	config := config2.LoadConfig()

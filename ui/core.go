@@ -190,7 +190,7 @@ func (u *UI) Run() error {
 	// start a goroutine to flush old entries and invalidate the window so it will refresh.
 	go func() {
 		for {
-			imageCache.PrintStats()
+			//imageCache.PrintStats()
 			imageCache.FlushOldEntries()
 			u.w.Invalidate()
 			time.Sleep(5 * time.Minute)
