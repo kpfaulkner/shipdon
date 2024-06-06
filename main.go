@@ -14,7 +14,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
-	"time"
 )
 
 var (
@@ -59,8 +58,6 @@ func bToMb(b uint64) uint64 {
 
 func main() {
 
-	//defer profile.Start(profile.MemProfile, profile.MemProfileRate(100), profile.ProfilePath(".")).Stop()
-
 	debug := flag.Bool("debug", false, "enable debug mode")
 	flag.Parse()
 
@@ -70,14 +67,6 @@ func main() {
 	defer cancel()
 	w := new(app.Window)
 	opts := []app.Option{}
-
-	go func() {
-		for {
-			//debug.FreeOSMemory()
-			PrintMemUsage()
-			time.Sleep(30 * time.Second)
-		}
-	}()
 
 	opts = append(opts, app.Size(unit.Dp(800), unit.Dp(800)))
 	opts = append(opts, app.Title("Shipdon : "+Version))

@@ -10,6 +10,7 @@ require (
 	github.com/k3a/html2text v1.2.1
 	github.com/mattn/go-mastodon v0.0.8
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/profile v1.2.1
 	github.com/sirupsen/logrus v1.9.3
 	golang.org/x/exp/shiny v0.0.0-20220827204233-334a2380cb91
 	golang.org/x/image v0.16.0

@@ -1,6 +1,7 @@
 package mastodon
 
 import (
+	"fmt"
 	"github.com/mattn/go-mastodon"
 	"slices"
 	"sync"
@@ -32,6 +33,19 @@ func NewTimelineCache() *TimelineCache {
 		timelineMessageCache: make(map[string]TimelineDetails),
 		messageCache:         make(map[mastodon.ID]mastodon.Status),
 	}
+}
+
+func (tc *TimelineCache) PrintStats() error {
+
+	tc.lock.RLock()
+
+	for timeline, cache := range tc.timelineMessageCache {
+		fmt.Printf("TimelineCache: timeline %s : cache items %d\n", timeline, len(cache.messages))
+	}
+	fmt.Printf("TimelineCache : messageCache items %d\n", len(tc.messageCache))
+
+	tc.lock.RUnlock()
+	return nil
 }
 
 func (tc *TimelineCache) ClearTimeline(timeline string) error {

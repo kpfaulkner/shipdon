@@ -30,6 +30,8 @@ const (
 	UserColumn
 	ThreadColumn
 	SearchColumn
+
+	RefreshTimeDelta = 10 * time.Second
 )
 
 // Define some convenient type aliases to make some things more concise.
@@ -97,6 +99,8 @@ type MessageColumn struct {
 	removeColumnButton widget.Clickable
 
 	icon *widget.Icon
+
+	nextEventRefreshTime time.Time
 }
 
 // NewMessageColumn builds a messageColumns using a controller and backend.
@@ -122,12 +126,7 @@ func NewMessageColumn(componentState ComponentState, timelineName string, timeli
 	p.icon = ic
 	p.columnType = columnType
 
-	go func() {
-		for {
-			p.PrintStats()
-			time.Sleep(5 * time.Minute)
-		}
-	}()
+	p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
 
 	return p
 }
@@ -225,8 +224,6 @@ func (p *MessageColumn) layoutHeader(gtx C, haveRemoveButton bool) D {
 	)
 }
 
-// layoutStatusList displays a list of messages
-// Need to provide a maximum until figure out how to extend.
 func (p *MessageColumn) layoutStatusList(gtx C) D {
 
 	var err error
@@ -296,19 +293,23 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 
 	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
 
-		// if we're trying to display within 20 of the last element, then fetch older
-		if index > len(p.statusStateList)-20 {
-			log.Debugf("retrieve older status updates")
-			// cause messages to get refreshed...
-			events.FireEvent(events.NewGetOlderRefreshEvents(p.timelineID, getRefreshTypeForColumnType(p.columnType)))
-		} else {
+		if time.Now().After(p.nextEventRefreshTime) {
+			// if we're trying to display within 20 of the last element, then fetch older
+			if index > len(p.statusStateList)-5 {
+				log.Debugf("retrieve older status updates")
+				// cause messages to get refreshed...
+				events.FireEvent(events.NewGetOlderRefreshEvents(p.timelineID, getRefreshTypeForColumnType(p.columnType)))
+				p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+			} else {
 
-			// if we've scrolled and have a tasklist thats greater than visible (assumption) but drawing the first one
-			// then refresh.
-			if len(p.statusStateList) > 40 && index == 0 {
-				events.FireEvent(events.NewRefreshEvent(p.timelineID, true, getRefreshTypeForColumnType(p.columnType)))
+				// if we've scrolled and have a tasklist thats greater than visible (assumption) but drawing the first one
+				// then refresh.
+				if len(p.statusStateList) > 40 && index == 0 {
+					log.Debugf("refreshing timeline %s", p.timelineID)
+					events.FireEvent(events.NewRefreshEvent(p.timelineID, true, getRefreshTypeForColumnType(p.columnType)))
+					p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+				}
 			}
-
 		}
 
 		const baseInset = unit.Dp(12)
