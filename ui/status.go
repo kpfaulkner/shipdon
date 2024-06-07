@@ -87,6 +87,7 @@ func (ss *StatusState) syncStatusToUI(status mastodon.Status, gtx C) {
 
 	usernameSpans := ss.generateNameSpanStyles(status)
 	ss.NameStyle = richtext.Text(&ss.Name, ss.th.Shaper, usernameSpans...)
+	//ss.OrigStatusNameStyle = richtext.Text(&ss.OrigStatusName, ss.th.Shaper, usernameSpans...)
 
 	detailsSpans := ss.generateDetailsSpanStyles(status)
 	ss.DetailStyle = richtext.Text(&ss.Details, ss.th.Shaper, detailsSpans...)
@@ -415,7 +416,7 @@ func (ss *StatusState) generateNameSpanStyles(status mastodon.Status) []richtext
 				Interactive: true,
 			}
 			span3.Set("username", status.Reblog.Account.Username)
-			span3.Set("userID", fmt.Sprintf("%d", status.Reblog.Account.ID))
+			span3.Set("userID", status.Reblog.Account.ID)
 			spans = append(spans, span3)
 		}
 	}

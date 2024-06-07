@@ -199,7 +199,6 @@ func (u *UI) Run() error {
 
 	// Iterate events from our Gio window.
 	for {
-		//for ev := range u.w.Events() {
 		ev := u.w.Event()
 		switch ev := ev.(type) {
 		case app.DestroyEvent:
