@@ -378,30 +378,15 @@ func (i NotificationStyle) layoutPoll(gtx C) D {
 				l := material.Label(&i.state.th.Theme, unit.Sp(15), "Poll : "+content)
 				return l.Layout(gtx)
 			}),
+			layout.Rigid(func(gtx C) D {
+				content := ""
+				for ii, o := range i.state.notification.Status.Poll.Options {
+					content = content + fmt.Sprintf("%d : %s\n", ii, o.Title)
+				}
 
-			layout.Flexed(1, i.layoutPollOptions),
+				l := material.Label(&i.state.th.Theme, unit.Sp(15), content)
+				return l.Layout(gtx)
+			}),
 		)
 	})
-}
-
-func (i NotificationStyle) layoutPollOptions(gtx C) D {
-
-	listStyle := material.List(&i.state.th.Theme, &i.PollList)
-	listStyle.AnchorStrategy = material.Overlay
-
-	options := []layout.FlexChild{}
-	for index, option := range i.state.notification.Status.Poll.Options {
-		l := material.Label(&i.state.th.Theme, unit.Sp(15), fmt.Sprintf("%d : %s", index+1, option.Title))
-		options = append(options, layout.Rigid(l.Layout))
-	}
-
-	ls := listStyle.Layout(gtx, len(options), func(gtx C, index int) D {
-
-		return layout.Flex{
-			Axis: layout.Vertical,
-			//Alignment: layout.Middle,
-		}.Layout(gtx, options[index])
-	})
-
-	return ls
 }
