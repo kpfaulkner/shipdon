@@ -36,12 +36,6 @@ type ComposeColumn struct {
 
 // NewComposeColumn builds a messageColumns using a controller and backend.
 func NewComposeColumn(componentState ComponentState, th *ShipdonTheme) *ComposeColumn {
-	// Build a default theme.
-	//th := material.NewTheme()
-	//th2 := *th
-	//th.Bg = color.NRGBA{R: 0, G: 0, B: 0, A: 0xff}
-	// Try to select a decent system font.
-	//th.Face = `Segoe UI, SF Pro, Dejavu Sans, Roboto, Noto Sans, sans-serif`
 	p := &ComposeColumn{
 		th:             th,
 		ComponentState: componentState,

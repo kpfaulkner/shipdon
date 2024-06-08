@@ -9,7 +9,6 @@ import (
 	"gioui.org/widget"
 	"gioui.org/widget/material"
 	"gioui.org/x/richtext"
-	"github.com/k3a/html2text"
 	"github.com/mattn/go-mastodon"
 	"image"
 )
@@ -104,7 +103,8 @@ func (ss *NotificationState) generateDetailsSpanStyles(notification mastodon.Not
 	case "update":
 		spans = generateDetailsSpanStyles(*notification.Status, ss.th)
 	case "poll":
-		spans = generatePollSpanStyles(*notification.Status, ss.th)
+		//spans = generatePollSpanStyles(*notification.Status, ss.th)
+		spans = generateDetailsSpanStyles(*notification.Status, ss.th)
 	}
 
 	return spans
@@ -154,6 +154,10 @@ func (ss *NotificationState) generateNameSpanStyles(notification mastodon.Notifi
 		}
 		spans = append(spans, span2)
 	case "poll":
+
+		// TODO(kpfaulkner) adjust so we can handle more than just finished polls
+		description := "ended"
+
 		span := richtext.SpanStyle{
 			Content:     notification.Account.DisplayName,
 			Color:       ss.th.Fg,
@@ -166,7 +170,7 @@ func (ss *NotificationState) generateNameSpanStyles(notification mastodon.Notifi
 		spans = append(spans, span)
 
 		span2 := richtext.SpanStyle{
-			Content: " 's poll just ended",
+			Content: " 's poll " + description,
 			Color:   ss.th.BoostedColour,
 			Size:    unit.Sp(16),
 			Font:    fonts[0].Font,
@@ -331,6 +335,9 @@ func (i NotificationStyle) layoutPoll(gtx C) D {
 	listStyle := material.List(&i.state.th.Theme, &i.PollList)
 	listStyle.AnchorStrategy = material.Overlay
 
+	detailsSpans := generateDetailsSpanStyles(*i.state.notification.Status, i.state.th)
+	i.state.DetailStyle = richtext.Text(&i.state.Details, i.state.th.Shaper, detailsSpans...)
+
 	// default to usual
 	const spacing = unit.Dp(4)
 	return layout.UniformInset(spacing).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
@@ -371,18 +378,18 @@ func (i NotificationStyle) layoutPoll(gtx C) D {
 			}),
 
 			layout.Rigid(layout.Spacer{Height: spacing}.Layout),
-
-			layout.Rigid(func(gtx C) D {
-				content := html2text.HTML2TextWithOptions(i.state.notification.Status.Content, html2text.WithLinksInnerText())
-
-				l := material.Label(&i.state.th.Theme, unit.Sp(15), "Poll : "+content)
-				return l.Layout(gtx)
+			layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+				return i.state.DetailStyle.Layout(gtx)
 			}),
+
+			layout.Rigid(layout.Spacer{Height: spacing}.Layout),
+
 			layout.Rigid(func(gtx C) D {
 				content := ""
 				for ii, o := range i.state.notification.Status.Poll.Options {
-					content = content + fmt.Sprintf("%d : %s\n", ii, o.Title)
+					content = content + fmt.Sprintf("%d : %s : (%d) \n", ii, o.Title, o.VotesCount)
 				}
+				content = content + fmt.Sprintf("Total Votes: %d\n", i.state.notification.Status.Poll.VotesCount)
 
 				l := material.Label(&i.state.th.Theme, unit.Sp(15), content)
 				return l.Layout(gtx)
