@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/url"
 	"slices"
+	"sort"
 	"sync"
 	"time"
 )
@@ -47,6 +48,14 @@ func String(length int) string {
 	return StringWithCharset(length, charset)
 }
 
+type Notification struct {
+	ID        mastodon.ID
+	Type      string
+	CreatedAt time.Time
+	Account   mastodon.Account
+	StatusID  mastodon.ID
+}
+
 type MastodonBackend struct {
 	app    *mastodon.Application
 	client *mastodon.Client
@@ -54,6 +63,10 @@ type MastodonBackend struct {
 	// cache of messages.
 	// key is timeline name
 	timelineMessageCache *TimelineCache
+
+	// keep local copy of notifications. These are specialised enough that they
+	// wont need to be keeped in the cache (I hope)
+	notifications []Notification
 
 	eventListener *events.EventListener
 	lock          sync.RWMutex
@@ -211,6 +224,26 @@ func (c *MastodonBackend) GetTimeline(timelineID string) ([]mastodon.Status, err
 	return messages, nil
 }
 
+// just grab notifications
+func (c *MastodonBackend) GetNotifications() ([]*mastodon.Notification, error) {
+	notifications := []*mastodon.Notification{}
+
+	for _, n := range c.notifications {
+		notification := &mastodon.Notification{
+			ID:        n.ID,
+			Type:      n.Type,
+			CreatedAt: n.CreatedAt,
+			Account:   n.Account,
+		}
+		if n.StatusID != "" {
+			status := c.timelineMessageCache.messageCache[n.StatusID]
+			notification.Status = &status
+		}
+		notifications = append(notifications, notification)
+	}
+	return notifications, nil
+}
+
 // Favourite a toot
 func (c *MastodonBackend) SetFavourite(id mastodon.ID, fav bool) error {
 
@@ -329,34 +362,35 @@ func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 	case events.NOTIFICATION_REFRESH:
 		notifications, err := c.client.GetNotifications(context.Background(), &params)
 		if err != nil {
-			log.Errorf("unable to get timelineID %s : err %s", timelineID, err)
+			log.Errorf("unable to get notifications : err %s", err)
 			return nil
 		}
 
-		// TODO(kpfaulkner) do we want the additional information in a notification?
-		for _, n := range notifications {
-			if n.Status != nil {
-
-				//// disable for moment. Do I rework cache to handle something other than Status?
-				//if false {
-				//	// if any statuses are favourited, then find who favourited them
-				//	if n.Status.Account.ID == currentAccount.ID && n.Status.FavouritesCount > 0 {
-				//		accounts, err := c.client.GetStatusFavouritedBy(n.Status.ID, &madon.LimitParams{
-				//			Limit: 2,
-				//		})
-				//		if err != nil {
-				//			log.Errorf("unable to get favourites for statusID %d : err %s", n.Status.ID, err)
-				//			continue
-				//		}
-				//		log.Debugf("accounts favouriting %d : %v", n.Status.ID, accounts)
-				//	}
-				//	if len(n.Status.Mentions) > 0 {
-				//		log.Debugf("mentions %+v", n.Status.Mentions)
-				//	}
-				//}
-				statuses = append(statuses, n.Status)
-			}
+		if re.ClearExisting {
+			c.notifications = []Notification{}
 		}
+		for _, n := range notifications {
+			notification := Notification{
+				ID:        n.ID,
+				Type:      n.Type,
+				CreatedAt: n.CreatedAt,
+				Account:   n.Account,
+			}
+
+			if n.Status != nil {
+				notification.StatusID = n.Status.ID
+				c.timelineMessageCache.AddToMessageCache([]mastodon.Status{*n.Status})
+			} else {
+				notification.StatusID = ""
+			}
+
+			c.notifications = append(c.notifications, notification)
+		}
+		sort.Slice(c.notifications, func(i, j int) bool {
+			return c.notifications[i].CreatedAt.After(c.notifications[j].CreatedAt)
+		})
+		return nil
+
 	case events.USER_REFRESH:
 		statuses, err = c.client.GetAccountStatuses(context.Background(), mastodon.ID(re.TimelineID), &params)
 

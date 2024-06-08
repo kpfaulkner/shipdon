@@ -87,12 +87,16 @@ func (ss *StatusState) syncStatusToUI(status mastodon.Status, gtx C) {
 
 	usernameSpans := ss.generateNameSpanStyles(status)
 	ss.NameStyle = richtext.Text(&ss.Name, ss.th.Shaper, usernameSpans...)
-	//ss.OrigStatusNameStyle = richtext.Text(&ss.OrigStatusName, ss.th.Shaper, usernameSpans...)
 
-	detailsSpans := ss.generateDetailsSpanStyles(status)
+	detailsSpans := generateDetailsSpanStyles(status, ss.th)
 	ss.DetailStyle = richtext.Text(&ss.Details, ss.th.Shaper, detailsSpans...)
 
-	ss.Avatar = generateAvatar(status)
+	var secondaryAccount *mastodon.Account
+	if status.Reblog != nil {
+		secondaryAccount = &status.Reblog.Account
+	}
+
+	ss.Avatar = generateAvatar(status.Account, secondaryAccount)
 	media, url := generateMedia(status)
 
 	// storage widget.Image for later use
@@ -125,13 +129,14 @@ func (ss *StatusState) syncStatusToUI(status mastodon.Status, gtx C) {
 
 // generates the avatar. This may just be grabbing a cached image OR
 // it could be compositing multiple images together in the case of a boost.
-func generateAvatar(status mastodon.Status) widget.Image {
-	if status.Reblog == nil {
-		return loadAvatar(status.Account.Username, status.Account.Avatar)
+func generateAvatar(account mastodon.Account, secondaryAccount *mastodon.Account) widget.Image {
+
+	if secondaryAccount == nil {
+		return loadAvatar(account.Username, account.Avatar)
 	}
 
 	// mergedKey is used for caching the composite image.
-	mergedKey := status.Account.Username + ":" + status.Reblog.Account.Username
+	mergedKey := account.Username + ":" + secondaryAccount.Username
 	imgEntry := imageCache.Get(mergedKey)
 
 	if imgEntry.status == Processed {
@@ -139,22 +144,22 @@ func generateAvatar(status mastodon.Status) widget.Image {
 	}
 
 	// get multiple images and composite them together.
-	boosterAvatar := imageCache.Get(status.Account.Username)
+	boosterAvatar := imageCache.Get(account.Username)
 	if boosterAvatar.status == NotProcessed {
 		imageChannel <- ImageDetails{
-			name:   status.Account.Username,
-			url:    status.Account.Avatar,
+			name:   account.Username,
+			url:    account.Avatar,
 			resize: true,
 			width:  50,
 			height: 50,
 		}
 	}
 
-	boostedAvatar := imageCache.Get(status.Reblog.Account.Username)
+	boostedAvatar := imageCache.Get(secondaryAccount.Username)
 	if boostedAvatar.status == NotProcessed {
 		imageChannel <- ImageDetails{
-			name:   status.Reblog.Account.Username,
-			url:    status.Reblog.Account.Avatar,
+			name:   secondaryAccount.Username,
+			url:    secondaryAccount.Avatar,
 			resize: true,
 			width:  50,
 			height: 50,
@@ -256,7 +261,7 @@ func loadAvatar(username string, avatarURL string) widget.Image {
 	return defaultAvatar
 }
 
-func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richtext.SpanStyle {
+func generateDetailsSpanStyles(status mastodon.Status, th *ShipdonTheme) []richtext.SpanStyle {
 
 	var content string
 	var mentions []mastodon.Mention
@@ -273,8 +278,6 @@ func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richt
 
 	spans := []richtext.SpanStyle{}
 
-	// replace for moment... just to test.
-	//details = `<p>my first Go project, a small tic tac toe peer-to-peer game (over TCP)</p><p><a href="https://github.com/Abdenasser/tcp-tac-toe" rel="nofollow noopener noreferrer" translate="no" target="_blank"><span class="invisible">https://</span><span class="ellipsis">github.com/Abdenasser/tcp-tac-</span><span class="invisible">toe</span></a></p><p>Discussions: <a href="https://discu.eu/q/https://github.com/Abdenasser/tcp-tac-toe" rel="nofollow noopener noreferrer" translate="no" target="_blank"><span class="invisible">https://</span><span class="ellipsis">discu.eu/q/https://github.com/</span><span class="invisible">Abdenasser/tcp-tac-toe</span></a></p><p><a href="https://mastodon.social/tags/golang" class="mention hashtag" rel="nofollow noopener noreferrer" target="_blank">#<span>golang</span></a> <a href="https://mastodon.social/tags/programming" class="mention hashtag" rel="nofollow noopener noreferrer" target="_blank">#<span>programming</span></a></p>`
 	t := html2text.HTML2TextWithOptions(content, html2text.WithLinksInnerText())
 	text := []rune(t)
 	inURL := false
@@ -287,7 +290,7 @@ func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richt
 				s := string(nonURLString)
 				span := richtext.SpanStyle{
 					Content: s,
-					Color:   ss.th.Fg,
+					Color:   th.Fg,
 
 					Size: unit.Sp(15),
 					Font: fonts[0].Font,
@@ -310,7 +313,7 @@ func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richt
 
 			span := richtext.SpanStyle{
 				Content: "",
-				Color:   ss.th.LinkColour,
+				Color:   th.LinkColour,
 				Size:    unit.Sp(15),
 				Font:    fonts[0].Font,
 			}
@@ -360,13 +363,56 @@ func (ss *StatusState) generateDetailsSpanStyles(status mastodon.Status) []richt
 	if len(nonURLString) > 0 {
 		span := richtext.SpanStyle{
 			Content: string(nonURLString),
-			Color:   ss.th.Fg,
+			Color:   th.Fg,
 			Size:    unit.Sp(15),
 			Font:    fonts[0].Font,
 		}
 		spans = append(spans, span)
 		nonURLString = []rune{}
 	}
+
+	return spans
+}
+
+func generatePollSpanStyles(status mastodon.Status, th *ShipdonTheme) []richtext.SpanStyle {
+
+	var content string
+
+	if status.Content != "" {
+		content = status.Content
+	} else {
+		if status.Reblog != nil {
+			content = status.Reblog.Content
+		}
+	}
+
+	spans := []richtext.SpanStyle{}
+
+	t := html2text.HTML2TextWithOptions(content, html2text.WithLinksInnerText())
+
+	span := richtext.SpanStyle{
+		Content: "Poll: " + t,
+		Color:   th.Fg,
+		Size:    unit.Sp(15),
+		Font:    fonts[0].Font,
+	}
+	spans = append(spans, span)
+
+	span2 := richtext.SpanStyle{
+		Content: "line1",
+		Color:   th.Fg,
+		Size:    unit.Sp(15),
+		Font:    fonts[0].Font,
+	}
+	spans = append(spans, span2)
+
+	span3 := richtext.SpanStyle{
+		Content: "line2",
+		Color:   th.Fg,
+		Size:    unit.Sp(15),
+		Font:    fonts[0].Font,
+	}
+	spans = append(spans, span3)
 
 	return spans
 }

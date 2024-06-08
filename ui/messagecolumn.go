@@ -224,7 +224,105 @@ func (p *MessageColumn) layoutHeader(gtx C, haveRemoveButton bool) D {
 	)
 }
 
+func (p *MessageColumn) layoutNotifications(gtx C) D {
+
+	var err error
+	notifications, err := p.backend.GetNotifications()
+	if err != nil {
+		log.Errorf("unable to get notifications: %s", err)
+		material.Body1(&p.th.Theme, err.Error()).Layout(gtx)
+	}
+
+	if len(notifications) == 0 {
+		return D{
+			Size:     image.Point{400, 600},
+			Baseline: 0,
+		}
+	}
+
+	paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
+	listStyle := material.List(&p.th.Theme, &p.statusList)
+	listStyle.AnchorStrategy = material.Overlay
+
+	ls := listStyle.Layout(gtx, len(notifications), func(gtx C, index int) D {
+
+		if time.Now().After(p.nextEventRefreshTime) {
+			// if we're trying to display within 20 of the last element, then fetch older
+			if index > len(notifications)-5 {
+				log.Debugf("retrieve older status updates")
+				// cause messages to get refreshed...
+				events.FireEvent(events.NewGetOlderRefreshEvents(p.timelineID, getRefreshTypeForColumnType(p.columnType)))
+				p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+			} else {
+
+				// if we've scrolled and have a tasklist thats greater than visible (assumption) but drawing the first one
+				// then refresh.
+				if len(notifications) > 40 && index == 0 {
+					log.Debugf("refreshing timeline %s", p.timelineID)
+					events.FireEvent(events.NewRefreshEvent(p.timelineID, true, getRefreshTypeForColumnType(p.columnType)))
+					p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+				}
+			}
+		}
+
+		const baseInset = unit.Dp(12)
+		inset := layout.Inset{
+			Left:   baseInset,
+			Right:  baseInset,
+			Top:    baseInset * .5,
+			Bottom: baseInset * .5,
+		}
+		if index == 0 {
+			inset.Top = baseInset
+		}
+		if index == len(p.statusStateList)-1 {
+			inset.Bottom = baseInset
+		}
+
+		switch notifications[index].Type {
+		case "follow":
+			newNotificationState := NewNotificationState(p.ComponentState, p.th)
+			newNotificationState.syncNotificationToUI(*notifications[index], gtx)
+			return inset.Layout(gtx, NewNotificationStyle(&p.th.Theme, newNotificationState).Layout)
+		case "favourite":
+			newNotificationState := NewNotificationState(p.ComponentState, p.th)
+			newNotificationState.syncNotificationToUI(*notifications[index], gtx)
+			return inset.Layout(gtx, NewNotificationStyle(&p.th.Theme, newNotificationState).Layout)
+		case "update":
+			newNotificationState := NewNotificationState(p.ComponentState, p.th)
+			newNotificationState.syncNotificationToUI(*notifications[index], gtx)
+			return inset.Layout(gtx, NewNotificationStyle(&p.th.Theme, newNotificationState).Layout)
+		case "poll":
+			newNotificationState := NewNotificationState(p.ComponentState, p.th)
+			newNotificationState.syncNotificationToUI(*notifications[index], gtx)
+			return inset.Layout(gtx, NewNotificationStyle(&p.th.Theme, newNotificationState).Layout)
+		case "reblog":
+			fmt.Printf("reblog")
+		case "mention":
+			newStatusState := NewStatusState(p.ComponentState, p.th)
+			newStatusState.syncStatusToUI(*notifications[index].Status, gtx)
+			media, url := generateMedia(*notifications[index].Status)
+			newStatusState.img = media
+			newStatusState.imgOrigURL = url
+			return inset.Layout(gtx, NewStatusStyle(&p.th.Theme, newStatusState).Layout)
+		}
+
+		return D{
+			Size:     image.Point{400, 600},
+			Baseline: 0,
+		}
+
+	})
+
+	return ls
+}
+
 func (p *MessageColumn) layoutStatusList(gtx C) D {
+
+	// special case for notifications
+	if p.timelineName == "notifications" {
+		return p.layoutNotifications(gtx)
+	}
 
 	var err error
 	messages, err := p.backend.GetTimeline(p.timelineID)
@@ -260,8 +358,12 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 		s.lastUsed = time.Now()
 		p.statusStateCache[status.ID] = s
 
+		var secondaryAccount *mastodon.Account
+		if status.Reblog != nil {
+			secondaryAccount = &status.Reblog.Account
+		}
 		// update images since they might have been downloaded since last time
-		p.statusStateCache[status.ID].statusState.Avatar = generateAvatar(status)
+		p.statusStateCache[status.ID].statusState.Avatar = generateAvatar(status.Account, secondaryAccount)
 		media, url := generateMedia(status)
 
 		// storage widget.Image for later use

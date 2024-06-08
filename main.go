@@ -21,7 +21,7 @@ import (
 
 var (
 	AccountID int64
-	Version   = "0.1.2"
+	Version   = "0.1.3"
 )
 
 func setupLogging(debug bool) {

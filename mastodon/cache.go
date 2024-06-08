@@ -82,11 +82,6 @@ func (tc *TimelineCache) AddToTimeline(timeline string, clearExisting bool, mess
 
 	tc.lock.Lock()
 	for _, i := range messages {
-		//id, err := strconv.ParseInt(string(i.ID), 10, 64)
-		//if err != nil {
-		//	tc.lock.Unlock()
-		//	return err
-		//}
 		details.messages = append(details.messages, i.ID)
 		tc.messageCache[i.ID] = i
 	}
@@ -106,6 +101,15 @@ func (tc *TimelineCache) AddToTimeline(timeline string, clearExisting bool, mess
 
 	tc.lock.Lock()
 	tc.timelineMessageCache[timeline] = details
+	tc.lock.Unlock()
+	return nil
+}
+
+func (tc *TimelineCache) AddToMessageCache(messages []mastodon.Status) error {
+	tc.lock.Lock()
+	for _, i := range messages {
+		tc.messageCache[i.ID] = i
+	}
 	tc.lock.Unlock()
 	return nil
 }
