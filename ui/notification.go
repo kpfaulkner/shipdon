@@ -10,10 +10,9 @@ import (
 	"gioui.org/widget/material"
 	"gioui.org/x/richtext"
 	"github.com/mattn/go-mastodon"
+	log "github.com/sirupsen/logrus"
 	"image"
 )
-
-var ()
 
 type NotificationState struct {
 	ComponentState
@@ -177,9 +176,9 @@ func (ss *NotificationState) generateNameSpanStyles(notification mastodon.Notifi
 		}
 		spans = append(spans, span2)
 	case "reblog":
-		fmt.Printf("reblog\n")
+		log.Debugf("reblog")
 	case "update":
-		fmt.Printf("update\n")
+
 		span := richtext.SpanStyle{
 			Content:     notification.Account.DisplayName,
 			Color:       ss.th.Fg,
@@ -200,7 +199,7 @@ func (ss *NotificationState) generateNameSpanStyles(notification mastodon.Notifi
 		spans = append(spans, span2)
 
 	case "mention":
-		fmt.Printf("mention\n")
+		log.Debugf("mention")
 	}
 	return spans
 }
