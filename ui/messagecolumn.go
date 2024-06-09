@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gioui.org/font/gofont"
 	"gioui.org/unit"
+	"gioui.org/x/richtext"
 	"github.com/kpfaulkner/shipdon/events"
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/mattn/go-mastodon"
@@ -138,6 +139,10 @@ func (p *MessageColumn) PrintStats() {
 // Layout builds your UI within the operation list in gtx.
 func (p *MessageColumn) Layout(gtx C) D {
 
+	if p.columnType == UserColumn {
+		return p.LayoutUserColumn(gtx)
+	}
+
 	// Make sure width is 400 (arbitrary for now)... but the height is taken from gtx passed in.
 	// This appears to be the height of the parent.
 	sideLength := gtx.Dp(400)
@@ -172,6 +177,30 @@ func (p *MessageColumn) Layout(gtx C) D {
 		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 			return p.layoutHeader(gtx, haveRemoveButton)
 		}),
+		layout.Flexed(1, p.layoutStatusList),
+	)
+}
+
+// LayoutUserColumn will still have statuses listed but also at top have information about the user.
+func (p *MessageColumn) LayoutUserColumn(gtx C) D {
+
+	// Make sure width is 400 (arbitrary for now)... but the height is taken from gtx passed in.
+	// This appears to be the height of the parent.
+	sideLength := gtx.Dp(400)
+	gtx.Constraints.Min = image.Point{X: sideLength, Y: gtx.Constraints.Max.Y}
+	gtx.Constraints.Max = image.Point{X: sideLength, Y: gtx.Constraints.Max.Y}
+
+	return layout.Flex{
+		Axis: layout.Vertical,
+	}.Layout(gtx,
+
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return p.layoutHeader(gtx, true)
+		}),
+		layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+			return p.layoutUserInfo(gtx)
+		}),
+
 		layout.Flexed(1, p.layoutStatusList),
 	)
 }
@@ -222,6 +251,85 @@ func (p *MessageColumn) layoutHeader(gtx C, haveRemoveButton bool) D {
 			)
 		}),
 	)
+}
+
+func (p *MessageColumn) layoutUserInfo(gtx C) D {
+	const spacing = unit.Dp(0)
+
+	userDetails := p.backend.GetUserDetails()
+
+	if userDetails == nil {
+		return layout.Dimensions{
+			Size:     image.Point{},
+			Baseline: 0,
+		}
+	}
+
+	avatar := generateAvatar(*userDetails, nil)
+
+	return layout.UniformInset(spacing).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+
+		gtx.Constraints.Min.X = gtx.Constraints.Max.X
+
+		var spans []richtext.SpanStyle
+
+		// if we're generating our own content... then just use acct.
+
+		span := richtext.SpanStyle{
+			Content:     userDetails.DisplayName,
+			Color:       p.th.Fg,
+			Size:        unit.Sp(15),
+			Font:        fonts[0].Font,
+			Interactive: false,
+		}
+		span.Set("username", userDetails.Username)
+		span.Set("userID", userDetails.ID)
+		spans = append(spans, span)
+		name := richtext.InteractiveText{}
+		nameStyle := richtext.Text(&name, p.th.Shaper, spans...)
+
+		return layout.Stack{}.Layout(gtx,
+			// The order child widgets are provided is from the bottom of the stack
+			// to the top. Our first child is "expanded" meaning that its constraints
+			// will be set to require it to be at least as large as all "stacked"
+			// children. This makes it easy to build a "surface" underneath other
+			// widgets.
+			layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+
+				// Rounded rects to cover a particular status
+				//rrect := clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, gtx.Dp(10))
+				//rrect := clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Max}, gtx.Dp(10))
+
+				paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
+
+				// Here is background of status areas (currently white). Need to modify
+				//paint.FillShape(gtx.Ops, p.th.Bg, rrect.Op(gtx.Ops))
+				return D{Size: gtx.Constraints.Min}
+			}),
+			layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+				return layout.Flex{
+					Axis: layout.Vertical,
+				}.Layout(gtx,
+
+					layout.Rigid(func(gtx C) D {
+						return layout.Flex{
+							Axis: layout.Horizontal,
+						}.Layout(gtx,
+
+							// avatar?
+							layout.Rigid(func(gtx C) D {
+								return avatar.Layout(gtx)
+							}),
+
+							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+								return nameStyle.Layout(gtx)
+							}),
+						)
+					}),
+				)
+			}),
+		)
+	})
 }
 
 func (p *MessageColumn) layoutNotifications(gtx C) D {

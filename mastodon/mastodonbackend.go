@@ -80,6 +80,9 @@ type MastodonBackend struct {
 
 	config *config.Config
 
+	// used when we're investigating a specific user.
+	userInfo *mastodon.Account
+
 	ctx context.Context
 }
 
@@ -393,6 +396,12 @@ func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 
 	case events.USER_REFRESH:
 		statuses, err = c.client.GetAccountStatuses(context.Background(), mastodon.ID(re.TimelineID), &params)
+		account, err := c.client.GetAccount(context.Background(), mastodon.ID(re.TimelineID))
+		if err != nil {
+			log.Errorf("unable to get accountID %s : err %s", re.TimelineID)
+		} else {
+			c.userInfo = account
+		}
 
 	case events.THREAD_REFRESH:
 		done := false
@@ -426,6 +435,11 @@ func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 	}
 
 	return nil
+}
+
+// GetUserDetails is NOT the current user, but the user we've investigating (ie getting profile of).
+func (c *MastodonBackend) GetUserDetails() *mastodon.Account {
+	return c.userInfo
 }
 
 // Boost or unboost a toot
