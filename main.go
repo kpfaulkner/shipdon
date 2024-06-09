@@ -50,6 +50,8 @@ func PrintMemUsage() {
 	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
 	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
 	fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	fmt.Printf("\tHeapInUse = %v", m.HeapInuse)
+	fmt.Printf("\tStackInUse = %v", m.StackInuse)
 	fmt.Printf("\tNumGC = %v", m.NumGC)
 	fmt.Printf("\tHeapObjects = %v", m.HeapObjects)
 	fmt.Printf("\tHeapReleased = %v\n", m.HeapReleased)
@@ -76,7 +78,7 @@ func main() {
 		go func() {
 			for {
 				PrintMemUsage()
-				time.Sleep(1 * time.Minute)
+				time.Sleep(30 * time.Second)
 			}
 		}()
 
