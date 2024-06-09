@@ -267,69 +267,53 @@ func (p *MessageColumn) layoutUserInfo(gtx C) D {
 
 	avatar := generateAvatar(*userDetails, nil)
 
-	return layout.UniformInset(spacing).Layout(gtx, func(gtx layout.Context) layout.Dimensions {
+	gtx.Constraints.Min.X = gtx.Constraints.Max.X
 
-		gtx.Constraints.Min.X = gtx.Constraints.Max.X
+	var spans []richtext.SpanStyle
 
-		var spans []richtext.SpanStyle
+	span := richtext.SpanStyle{
+		Content:     userDetails.DisplayName,
+		Color:       p.th.Fg,
+		Size:        unit.Sp(15),
+		Font:        fonts[0].Font,
+		Interactive: false,
+	}
+	span.Set("username", userDetails.Username)
+	span.Set("userID", userDetails.ID)
+	spans = append(spans, span)
+	name := richtext.InteractiveText{}
+	nameStyle := richtext.Text(&name, p.th.Shaper, spans...)
 
-		// if we're generating our own content... then just use acct.
+	return layout.Stack{}.Layout(gtx,
+		layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+			paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
+			// Here is background of status areas (currently white). Need to modify
+			return D{Size: gtx.Constraints.Min}
+		}),
+		layout.Stacked(func(gtx layout.Context) layout.Dimensions {
+			return layout.Flex{
+				Axis: layout.Vertical,
+			}.Layout(gtx,
 
-		span := richtext.SpanStyle{
-			Content:     userDetails.DisplayName,
-			Color:       p.th.Fg,
-			Size:        unit.Sp(15),
-			Font:        fonts[0].Font,
-			Interactive: false,
-		}
-		span.Set("username", userDetails.Username)
-		span.Set("userID", userDetails.ID)
-		spans = append(spans, span)
-		name := richtext.InteractiveText{}
-		nameStyle := richtext.Text(&name, p.th.Shaper, spans...)
+				layout.Rigid(func(gtx C) D {
+					return layout.Flex{
+						Axis: layout.Horizontal,
+					}.Layout(gtx,
 
-		return layout.Stack{}.Layout(gtx,
-			// The order child widgets are provided is from the bottom of the stack
-			// to the top. Our first child is "expanded" meaning that its constraints
-			// will be set to require it to be at least as large as all "stacked"
-			// children. This makes it easy to build a "surface" underneath other
-			// widgets.
-			layout.Expanded(func(gtx layout.Context) layout.Dimensions {
+						// avatar?
+						layout.Rigid(func(gtx C) D {
+							return avatar.Layout(gtx)
+						}),
 
-				// Rounded rects to cover a particular status
-				//rrect := clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Min}, gtx.Dp(10))
-				//rrect := clip.UniformRRect(image.Rectangle{Max: gtx.Constraints.Max}, gtx.Dp(10))
+						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
+							return nameStyle.Layout(gtx)
+						}),
+					)
+				}),
+			)
+		}),
+	)
 
-				paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
-
-				// Here is background of status areas (currently white). Need to modify
-				//paint.FillShape(gtx.Ops, p.th.Bg, rrect.Op(gtx.Ops))
-				return D{Size: gtx.Constraints.Min}
-			}),
-			layout.Stacked(func(gtx layout.Context) layout.Dimensions {
-				return layout.Flex{
-					Axis: layout.Vertical,
-				}.Layout(gtx,
-
-					layout.Rigid(func(gtx C) D {
-						return layout.Flex{
-							Axis: layout.Horizontal,
-						}.Layout(gtx,
-
-							// avatar?
-							layout.Rigid(func(gtx C) D {
-								return avatar.Layout(gtx)
-							}),
-
-							layout.Rigid(func(gtx layout.Context) layout.Dimensions {
-								return nameStyle.Layout(gtx)
-							}),
-						)
-					}),
-				)
-			}),
-		)
-	})
 }
 
 func (p *MessageColumn) layoutNotifications(gtx C) D {
