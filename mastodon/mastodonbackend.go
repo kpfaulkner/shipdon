@@ -81,7 +81,8 @@ type MastodonBackend struct {
 	config *config.Config
 
 	// used when we're investigating a specific user.
-	userInfo *mastodon.Account
+	userInfo         *mastodon.Account
+	userRelationship *mastodon.Relationship
 
 	ctx context.Context
 }
@@ -225,6 +226,23 @@ func (c *MastodonBackend) Search(query string) (*mastodon.Results, error) {
 func (c *MastodonBackend) GetTimeline(timelineID string) ([]mastodon.Status, error) {
 	messages := c.timelineMessageCache.GetAllStatusForTimeline(timelineID)
 	return messages, nil
+}
+
+// ChangeFollowStatusForUserID follows (or unfollows) userID
+func (c *MastodonBackend) ChangeFollowStatusForUserID(userID mastodon.ID, follow bool) error {
+
+	if follow {
+		_, err := c.client.AccountFollow(context.Background(), userID)
+		if err != nil {
+			return err
+		}
+	} else {
+		_, err := c.client.AccountUnfollow(context.Background(), userID)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // just grab notifications
@@ -395,12 +413,18 @@ func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 		return nil
 
 	case events.USER_REFRESH:
+		c.userInfo = nil
+		c.userRelationship = nil
 		statuses, err = c.client.GetAccountStatuses(context.Background(), mastodon.ID(re.TimelineID), &params)
 		account, err := c.client.GetAccount(context.Background(), mastodon.ID(re.TimelineID))
 		if err != nil {
-			log.Errorf("unable to get accountID %s : err %s", re.TimelineID)
+			log.Errorf("unable to get accountID %s : err %s", re.TimelineID, err)
 		} else {
 			c.userInfo = account
+		}
+		err = c.RefreshUserRelationship()
+		if err != nil {
+			log.Errorf("unable to get relationship for userid %s :  %s : err %s", re.TimelineID, err)
 		}
 
 	case events.THREAD_REFRESH:
@@ -438,8 +462,18 @@ func (c *MastodonBackend) RefreshMessagesCallback(e events.Event) error {
 }
 
 // GetUserDetails is NOT the current user, but the user we've investigating (ie getting profile of).
-func (c *MastodonBackend) GetUserDetails() *mastodon.Account {
-	return c.userInfo
+func (c *MastodonBackend) GetUserDetails() (*mastodon.Account, *mastodon.Relationship) {
+	return c.userInfo, c.userRelationship
+}
+
+func (c *MastodonBackend) RefreshUserRelationship() error {
+	// based off c.userInfo, refresh the userdetails/relationship\
+	relationship, err := c.client.GetAccountRelationships(context.Background(), []string{string(c.userInfo.ID)})
+	if err != nil {
+		log.Errorf("unable to get relationship for userid %s :  %s : err %s", c.userInfo.ID, err)
+	}
+	c.userRelationship = relationship[0]
+	return nil
 }
 
 // Boost or unboost a toot

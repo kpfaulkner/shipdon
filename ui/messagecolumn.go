@@ -90,8 +90,6 @@ type MessageColumn struct {
 	// if now is later than timeStampForRefresh, then refresh via mastodon call.
 	timeStampForRefresh time.Time
 
-	//messages []madon.Status
-
 	// indicate maximum status to display in column
 	maxStatusToDisplay int
 
@@ -102,6 +100,9 @@ type MessageColumn struct {
 	icon *widget.Icon
 
 	nextEventRefreshTime time.Time
+
+	// for following/unfollowing user in the usercolumn
+	followClickable widget.Clickable
 }
 
 // NewMessageColumn builds a messageColumns using a controller and backend.
@@ -256,7 +257,14 @@ func (p *MessageColumn) layoutHeader(gtx C, haveRemoveButton bool) D {
 func (p *MessageColumn) layoutUserInfo(gtx C) D {
 	const spacing = unit.Dp(0)
 
-	userDetails := p.backend.GetUserDetails()
+	userDetails, relationship := p.backend.GetUserDetails()
+
+	followIcon := icons.ContentAddCircle
+	followColour := p.th.IconActiveColour
+	if relationship != nil && !relationship.Following {
+		followColour = p.th.IconInactiveColour
+		followIcon = icons.NavigationCancel
+	}
 
 	if userDetails == nil {
 		return layout.Dimensions{
@@ -307,6 +315,12 @@ func (p *MessageColumn) layoutUserInfo(gtx C) D {
 
 						layout.Rigid(func(gtx layout.Context) layout.Dimensions {
 							return nameStyle.Layout(gtx)
+						}),
+						layout.Rigid(func(gtx C) D {
+							ic, _ := widget.NewIcon(followIcon)
+							followButton := newIconButton(p.th, &p.followClickable, ic, p.th.IconBackgroundColour)
+							followButton.iconColour = followColour
+							return followButton.Layout(gtx)
 						}),
 					)
 				}),

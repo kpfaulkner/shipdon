@@ -408,7 +408,23 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 	// Message Columns events
 	for colNum, c := range u.messageColumns {
 
-		_, ok := c.removeColumnButton.Update(gtx)
+		_, ok := c.followClickable.Update(gtx)
+		if ok {
+			log.Debugf("follow/unfollow clickable for user %s", c.timelineName)
+			account, relationship := c.backend.GetUserDetails()
+			if account != nil && relationship != nil {
+				err := c.backend.ChangeFollowStatusForUserID(account.ID, !relationship.Following)
+				if err != nil {
+					log.Errorf("error changing follow status %+v", err)
+					return err
+				}
+				c.backend.RefreshUserRelationship()
+				log.Debugf("invalidating UI")
+				u.w.Invalidate()
+			}
+		}
+
+		_, ok = c.removeColumnButton.Update(gtx)
 		if ok {
 			log.Debugf("remove column  %s", c.timelineID)
 
