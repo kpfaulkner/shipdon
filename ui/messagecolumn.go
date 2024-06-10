@@ -32,7 +32,7 @@ const (
 	ThreadColumn
 	SearchColumn
 
-	RefreshTimeDelta = 10 * time.Second
+	RefreshTimeDelta = 5 * time.Second
 )
 
 // Define some convenient type aliases to make some things more concise.
@@ -259,11 +259,13 @@ func (p *MessageColumn) layoutUserInfo(gtx C) D {
 
 	userDetails, relationship := p.backend.GetUserDetails()
 
+	followText := "Follow"
 	followIcon := icons.ContentAddCircle
 	followColour := p.th.IconActiveColour
 	if relationship != nil && !relationship.Following {
 		followColour = p.th.IconInactiveColour
 		followIcon = icons.NavigationCancel
+		followText = "Unfollow"
 	}
 
 	if userDetails == nil {
@@ -321,6 +323,9 @@ func (p *MessageColumn) layoutUserInfo(gtx C) D {
 							followButton := newIconButton(p.th, &p.followClickable, ic, p.th.IconBackgroundColour)
 							followButton.iconColour = followColour
 							return followButton.Layout(gtx)
+						}),
+						layout.Rigid(func(gtx C) D {
+							return material.Label(&p.th.Theme, unit.Sp(15), fmt.Sprintf("%s", followText)).Layout(gtx)
 						}),
 					)
 				}),

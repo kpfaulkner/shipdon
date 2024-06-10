@@ -7,6 +7,7 @@ import (
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
+	"gioui.org/op/clip"
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	"gioui.org/widget/material"
@@ -192,7 +193,7 @@ func (u *UI) Run() error {
 		for {
 			//imageCache.PrintStats()
 			imageCache.FlushOldEntries()
-			u.w.Invalidate()
+			u.delayInvalidate(1)
 			time.Sleep(5 * time.Minute)
 		}
 	}()
@@ -214,6 +215,8 @@ func (u *UI) Run() error {
 			// build a layout context using our operation list and info from the frame
 			// event.
 			gtx := app.NewContext(&ops, ev)
+
+			paint.FillShape(gtx.Ops, u.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
 
 			err := u.handleComposeColumnEvents(gtx)
 			if err != nil {
@@ -363,12 +366,7 @@ func (u *UI) handleComposeColumnEvents(gtx layout.Context) error {
 		}
 
 		// totally unscientific... but sleep a little then refresh :)
-		// FIXME(kpfaulkner) come up with something nicer
-		go func() {
-			<-time.After(2 * time.Second)
-			log.Debugf("invalidating UI")
-			u.w.Invalidate()
-		}()
+		u.delayInvalidate(2)
 	}
 
 	performSearch := false
@@ -392,12 +390,7 @@ func (u *UI) handleComposeColumnEvents(gtx layout.Context) error {
 			log.Errorf("error searching %+v", err)
 			return nil
 		}
-		go func() {
-			<-time.After(2 * time.Second)
-			log.Debugf("invalidating UI")
-			u.w.Invalidate()
-		}()
-
+		u.delayInvalidate(2)
 		u.composeColumn.searchResults = res.Statuses
 	}
 
@@ -420,7 +413,7 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 				}
 				c.backend.RefreshUserRelationship()
 				log.Debugf("invalidating UI")
-				u.w.Invalidate()
+				u.delayInvalidate(2)
 			}
 		}
 
@@ -440,11 +433,7 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 					log.Errorf("error clearing search %+v", err)
 				}
 				u.composeColumn.searchQuery.SetText("")
-				go func() {
-					<-time.After(2 * time.Second)
-					log.Debugf("invalidating UI")
-					u.w.Invalidate()
-				}()
+				u.delayInvalidate(2)
 			} else {
 				// actually remove column
 				if len(u.messageColumns) == colNum {
@@ -540,6 +529,13 @@ func (u *UI) handleMessageColumnEvents(gtx layout.Context) error {
 		}
 	}
 	return nil
+}
+
+func (u *UI) delayInvalidate(seconds int) {
+	go func() {
+		time.Sleep(time.Duration(seconds) * time.Second)
+		u.w.Invalidate()
+	}()
 }
 
 func layoutAllMessageCols(columns []*MessageColumn) []layout.FlexChild {
