@@ -24,3 +24,7 @@ user's home directory called ~/.shipdon/config.yaml
 
 ### Notes:
  Some icons are from https://iconscout.com/free-icon-pack/google-material-vol-1
+
+### Memory:
+
+  Have confirmed imaging isn't causing larger than expected memory usage.

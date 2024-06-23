@@ -2,6 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"image"
+	"image/color"
+	"path"
+	"strings"
+	"time"
+
 	"gioui.org/x/richtext"
 	"github.com/k3a/html2text"
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
@@ -9,11 +15,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/exp/shiny/materialdesign/icons"
 	"golang.org/x/image/draw"
-	"image"
-	"image/color"
-	"path"
-	"strings"
-	"time"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -90,6 +91,11 @@ func (ss *StatusState) syncStatusToUI(status mastodon.Status, gtx C) {
 
 	detailsSpans := generateDetailsSpanStyles(status, ss.th)
 	ss.DetailStyle = richtext.Text(&ss.Details, ss.th.Shaper, detailsSpans...)
+
+	ss.syncMedia(status, gtx)
+}
+
+func (ss *StatusState) syncMedia(status mastodon.Status, gtx C) {
 
 	var secondaryAccount *mastodon.Account
 	if status.Reblog != nil {
@@ -513,7 +519,7 @@ func (i StatusStyle) Layout(gtx C) D {
 
 	// Stack a rounded rect as the background of the status
 	// Then add the name/details etc etc on top of rounded rect
-	return layout.Stack{}.Layout(gtx,
+	d := layout.Stack{}.Layout(gtx,
 		// The order child widgets are provided is from the bottom of the stack
 		// to the top. Our first child is "expanded" meaning that its constraints
 		// will be set to require it to be at least as large as all "stacked"
@@ -554,6 +560,7 @@ func (i StatusStyle) Layout(gtx C) D {
 			)
 		}),
 	)
+	return d
 }
 
 // layoutStatus displays the text editors used to manipulate the task.

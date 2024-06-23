@@ -2,6 +2,9 @@ package ui
 
 import (
 	"fmt"
+	"image"
+	"time"
+
 	"gioui.org/font/gofont"
 	"gioui.org/unit"
 	"gioui.org/x/richtext"
@@ -9,8 +12,6 @@ import (
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/mattn/go-mastodon"
 	"golang.org/x/exp/shiny/materialdesign/icons"
-	"image"
-	"time"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -428,7 +429,7 @@ func (p *MessageColumn) layoutNotifications(gtx C) D {
 	return ls
 }
 
-func (p *MessageColumn) layoutStatusList(gtx C) D {
+func (p *MessageColumn) layoutStatusListORIG(gtx C) D {
 
 	// special case for notifications
 	if p.timelineName == "notifications" {
@@ -539,6 +540,120 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 			inset.Bottom = baseInset
 		}
 		return inset.Layout(gtx, NewStatusStyle(&p.th.Theme, p.statusStateList[index]).Layout)
+	})
+
+	return ls
+}
+
+// hack away so reducing number of status entries made... see if it makes an impact to memory.
+func (p *MessageColumn) layoutStatusList(gtx C) D {
+
+	// special case for notifications
+	if p.timelineName == "notifications" {
+		return p.layoutNotifications(gtx)
+	}
+
+	var err error
+	messages, err := p.backend.GetTimeline(p.timelineID)
+	if err != nil {
+		log.Errorf("unable to get timeline for %s: %s", p.timelineName, err)
+		material.Body1(&p.th.Theme, err.Error()).Layout(gtx)
+	}
+
+	if len(messages) == 0 {
+		return D{
+			Size:     image.Point{400, 600},
+			Baseline: 0,
+		}
+	}
+
+	p.statusStateList = []*StatusState{}
+
+	// any that are not in statusStateCache, add them.
+	for _, status := range messages {
+		newStatusState := NewStatusState(p.ComponentState, p.th)
+		//newStatusState := &StatusState{}
+		newStatusState.status = status
+		p.statusStateList = append(p.statusStateList, newStatusState)
+	}
+
+	// prune cache entries not used.
+	for k, v := range p.statusStateCache {
+		if time.Since(v.lastUsed) > 10*time.Minute {
+			log.Infof("deleting statusStateCache entry %s", k)
+			delete(p.statusStateCache, k)
+		}
+	}
+
+	log.Debugf("statusStateList: %d", len(p.statusStateList))
+
+	paint.FillShape(gtx.Ops, p.th.StatusBackgroundColour, clip.Rect{Max: gtx.Constraints.Max}.Op())
+	listStyle := material.List(&p.th.Theme, &p.statusList)
+	listStyle.AnchorStrategy = material.Overlay
+
+	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
+
+		log.Debugf("layout %s : index %d", p.timelineName, index)
+		ss := *p.statusStateList[index]
+
+		//var cacheEntry StatusStateCacheEntry
+		//var ok bool
+		//if cacheEntry, ok = p.statusStateCache[ss.status.ID]; !ok {
+		//	//newStatusState := NewStatusState(p.ComponentState, p.th)
+		//	ss.ComponentState = p.ComponentState
+		//	ss.th = p.th
+		//	ss.syncStatusToUI(ss.status, gtx)
+		//	p.statusStateCache[ss.status.ID] = StatusStateCacheEntry{
+		//		statusState: &ss,
+		//	}
+		//	cacheEntry, _ = p.statusStateCache[ss.status.ID]
+		//}
+		//
+		//ss.syncMedia(ss.status, gtx)
+		//
+		//cacheEntry.statusState.status = ss.status
+		//cacheEntry.lastUsed = time.Now()
+		//p.statusStateCache[ss.status.ID] = cacheEntry
+
+		//ss := *p.statusStateList[index]
+		ss.syncStatusToUI(ss.status, gtx)
+
+		if time.Now().After(p.nextEventRefreshTime) {
+			// if we're trying to display within 20 of the last element, then fetch older
+			if index > len(p.statusStateList)-5 {
+				log.Debugf("retrieve older status updates")
+				// cause messages to get refreshed...
+				events.FireEvent(events.NewGetOlderRefreshEvents(p.timelineID, getRefreshTypeForColumnType(p.columnType)))
+				p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+			} else {
+
+				// if we've scrolled and have a tasklist thats greater than visible (assumption) but drawing the first one
+				// then refresh.
+				if len(p.statusStateList) > 40 && index == 0 {
+					log.Debugf("refreshing timeline %s", p.timelineID)
+					events.FireEvent(events.NewRefreshEvent(p.timelineID, true, getRefreshTypeForColumnType(p.columnType)))
+					p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
+				}
+			}
+		}
+
+		const baseInset = unit.Dp(12)
+		inset := layout.Inset{
+			Left:   baseInset,
+			Right:  baseInset,
+			Top:    baseInset * .5,
+			Bottom: baseInset * .5,
+		}
+		if index == 0 {
+			inset.Top = baseInset
+		}
+		if index == len(p.statusStateList)-1 {
+			inset.Bottom = baseInset
+		}
+
+		//newStatusStyle := NewStatusStyle(&p.th.Theme, p.statusStateList[index]).Layout
+		newStatusStyle := NewStatusStyle(&p.th.Theme, &ss).Layout
+		return inset.Layout(gtx, newStatusStyle)
 	})
 
 	return ls

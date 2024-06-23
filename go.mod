@@ -3,8 +3,8 @@ module github.com/kpfaulkner/shipdon
 go 1.21.0
 
 require (
-	gioui.org v0.6.0
-	gioui.org/x v0.5.0
+	gioui.org v0.7.0
+	gioui.org/x v0.7.0
 	git.sr.ht/~gioverse/skel v0.0.0-20231031174925-5b7b311c1cf3
 	github.com/inkeliz/giohyperlink v0.0.0-20220903215451-2ac5d54abdce
 	github.com/k3a/html2text v1.2.1

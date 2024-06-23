@@ -1,13 +1,14 @@
 package ui
 
 import (
+	"image"
+	"math"
+	"time"
+
 	"gioui.org/op/paint"
 	"gioui.org/widget"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/image/draw"
-	"image"
-	"math"
-	"time"
 )
 
 func downloadImages(ch chan ImageDetails) {

@@ -4,6 +4,15 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
+	"math/rand"
+	"net/http"
+	"path"
+	"slices"
+	"time"
+
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -19,15 +28,6 @@ import (
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/mattn/go-mastodon"
 	log "github.com/sirupsen/logrus"
-	"image"
-	"image/color"
-	"image/gif"
-	"math/rand"
-	"slices"
-	"time"
-
-	"net/http"
-	"path"
 )
 
 type ShipdonTheme struct {
@@ -194,6 +194,7 @@ func (u *UI) Run() error {
 			//imageCache.PrintStats()
 			imageCache.FlushOldEntries()
 			u.delayInvalidate(1)
+			//debug.FreeOSMemory()
 			time.Sleep(5 * time.Minute)
 		}
 	}()
@@ -362,7 +363,7 @@ func (u *UI) handleComposeColumnEvents(gtx layout.Context) error {
 	_, ok = u.composeColumn.refreshButton.Update(gtx)
 	if ok {
 		for _, col := range u.messageColumns {
-			events.FireEvent(events.NewRefreshEvent(col.timelineID, false, getRefreshTypeForColumnType(col.columnType)))
+			events.FireEvent(events.NewRefreshEvent(col.timelineID, true, getRefreshTypeForColumnType(col.columnType)))
 		}
 
 		// totally unscientific... but sleep a little then refresh :)
