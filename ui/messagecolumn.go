@@ -593,7 +593,6 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 
 	ls := listStyle.Layout(gtx, len(p.statusStateList), func(gtx C, index int) D {
 
-		log.Debugf("layout %s : index %d", p.timelineName, index)
 		ss := *p.statusStateList[index]
 
 		//var cacheEntry StatusStateCacheEntry
