@@ -3,17 +3,18 @@ package mastodon
 import (
 	"context"
 	"fmt"
-	"github.com/kpfaulkner/shipdon/config"
-	"github.com/kpfaulkner/shipdon/events"
-	"github.com/mattn/go-mastodon"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"math/rand"
 	"net/url"
 	"slices"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/kpfaulkner/shipdon/config"
+	"github.com/kpfaulkner/shipdon/events"
+	"github.com/mattn/go-mastodon"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 const (

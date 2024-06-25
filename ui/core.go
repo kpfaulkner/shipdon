@@ -4,6 +4,15 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"image"
+	"image/color"
+	"image/gif"
+	"math/rand"
+	"net/http"
+	"path"
+	"slices"
+	"time"
+
 	"gioui.org/app"
 	"gioui.org/layout"
 	"gioui.org/op"
@@ -19,15 +28,6 @@ import (
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/mattn/go-mastodon"
 	log "github.com/sirupsen/logrus"
-	"image"
-	"image/color"
-	"image/gif"
-	"math/rand"
-	"slices"
-	"time"
-
-	"net/http"
-	"path"
 )
 
 type ShipdonTheme struct {
@@ -173,13 +173,14 @@ func (u *UI) Run() error {
 		for {
 
 			for _, col := range u.messageColumns {
-
+				if col.shouldNotAutoRefresh {
+					continue
+				}
 				// put random delays in so we're not hammering the server all at once.
 				go func(col *MessageColumn) {
 					time.Sleep(time.Duration(rand.Intn(5000)) * time.Millisecond)
 					events.FireEvent(events.NewRefreshEvent(col.timelineID, true, getRefreshTypeForColumnType(col.columnType)))
 				}(col)
-				//events.FireEvent(events.NewRefreshEvent(col.timelineID, false, getRefreshTypeForColumnType(col.columnType)))
 			}
 
 			// fire off a refresh every minute.
@@ -263,7 +264,9 @@ func (u *UI) generateMessageColumns() []*MessageColumn {
 	var columns []*MessageColumn
 
 	// search, home and notifications are special cases.
-	columns = append(columns, NewMessageColumn(NewComponentState(u.controller, u.backend), "search", "search", SearchColumn, u.th))
+	searchColumn := NewMessageColumn(NewComponentState(u.controller, u.backend), "search", "search", SearchColumn, u.th)
+	searchColumn.shouldNotAutoRefresh = true
+	columns = append(columns, searchColumn)
 	columns = append(columns, NewMessageColumn(NewComponentState(u.controller, u.backend), "home", "home", HomeColumn, u.th))
 	columns = append(columns, NewMessageColumn(NewComponentState(u.controller, u.backend), "notifications", "notifications", NotificationsColumn, u.th))
 

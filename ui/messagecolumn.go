@@ -2,6 +2,9 @@ package ui
 
 import (
 	"fmt"
+	"image"
+	"time"
+
 	"gioui.org/font/gofont"
 	"gioui.org/unit"
 	"gioui.org/x/richtext"
@@ -9,8 +12,6 @@ import (
 	mastodon2 "github.com/kpfaulkner/shipdon/mastodon"
 	"github.com/mattn/go-mastodon"
 	"golang.org/x/exp/shiny/materialdesign/icons"
-	"image"
-	"time"
 
 	"gioui.org/layout"
 	"gioui.org/op/clip"
@@ -103,6 +104,9 @@ type MessageColumn struct {
 
 	// for following/unfollowing user in the usercolumn
 	followClickable widget.Clickable
+
+	// indicates if autorefresh should happen or not. (dont want it for search column currently)
+	shouldNotAutoRefresh bool
 }
 
 // NewMessageColumn builds a messageColumns using a controller and backend.
