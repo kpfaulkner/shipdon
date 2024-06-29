@@ -457,39 +457,22 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 
 	// any that are not in statusStateCache, add them.
 	for _, status := range messages {
-		if s, ok := p.statusStateCache[status.ID]; !ok {
-			newStatusState := NewStatusState(p.ComponentState, p.th)
-			newStatusState.syncStatusToUI(status, gtx)
-			p.statusStateCache[status.ID] = StatusStateCacheEntry{
-				statusState: newStatusState,
+		var curState StatusStateCacheEntry
+		var ok bool
+		if curState, ok = p.statusStateCache[status.ID]; !ok {
+			state := NewStatusState(p.ComponentState, p.th)
+			state.status = status
+			curState = StatusStateCacheEntry{
+				statusState: state,
 			}
 		} else {
-
 			// make sure updates have occured, such as likes, boosts, etc.
-			s.statusState.status = status
+			curState.statusState.status = status
 		}
 
-		s := p.statusStateCache[status.ID]
-		s.lastUsed = time.Now()
-		p.statusStateCache[status.ID] = s
-
-		var secondaryAccount *mastodon.Account
-		if status.Reblog != nil {
-			secondaryAccount = &status.Reblog.Account
-		}
-		// update images since they might have been downloaded since last time
-		p.statusStateCache[status.ID].statusState.Avatar = generateAvatar(status.Account, secondaryAccount)
-		media, url := generateMedia(status)
-
-		// storage widget.Image for later use
-		if media != nil {
-			p.statusStateCache[status.ID].statusState.img = media
-			p.statusStateCache[status.ID].statusState.imgOrigURL = url
-		} else {
-			// make sure to clear out imgWidget...
-			p.statusStateCache[status.ID].statusState.img = nil
-			p.statusStateCache[status.ID].statusState.imgOrigURL = ""
-		}
+		//s := p.statusStateCache[status.ID]
+		curState.lastUsed = time.Now()
+		p.statusStateCache[status.ID] = curState
 
 		p.statusStateList = append(p.statusStateList, p.statusStateCache[status.ID].statusState)
 	}
@@ -527,6 +510,29 @@ func (p *MessageColumn) layoutStatusList(gtx C) D {
 					p.nextEventRefreshTime = time.Now().Add(RefreshTimeDelta)
 				}
 			}
+		}
+
+		curStatusState := p.statusStateList[index]
+		status := curStatusState.status
+		curStatusState.syncStatusToUI(status, gtx)
+
+		// we're rendering this status. Go and get images etc.
+		var secondaryAccount *mastodon.Account
+		if status.Reblog != nil {
+			secondaryAccount = &status.Reblog.Account
+		}
+		// update images since they might have been downloaded since last time
+		p.statusStateCache[status.ID].statusState.Avatar = generateAvatar(status.Account, secondaryAccount)
+		media, url := generateMedia(status)
+
+		// storage widget.Image for later use
+		if media != nil {
+			p.statusStateCache[status.ID].statusState.img = media
+			p.statusStateCache[status.ID].statusState.imgOrigURL = url
+		} else {
+			// make sure to clear out imgWidget...
+			p.statusStateCache[status.ID].statusState.img = nil
+			p.statusStateCache[status.ID].statusState.imgOrigURL = ""
 		}
 
 		const baseInset = unit.Dp(12)

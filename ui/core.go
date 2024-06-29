@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"path"
+	"runtime/debug"
 	"slices"
 	"time"
 
@@ -194,6 +195,7 @@ func (u *UI) Run() error {
 		for {
 			//imageCache.PrintStats()
 			imageCache.FlushOldEntries()
+			debug.FreeOSMemory() // hack.
 			u.delayInvalidate(1)
 			time.Sleep(5 * time.Minute)
 		}
